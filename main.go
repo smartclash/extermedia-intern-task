@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"github.com/jszwec/csvutil"
@@ -11,10 +12,33 @@ import (
 
 func main() {
 	dictionaryChannel := make(chan []Translation)
+	wordsChannel := make(chan []string)
 
+	go ReadWords(wordsChannel)
 	go ReadDictionary(dictionaryChannel)
 
-	fmt.Printf("%+v", <-dictionaryChannel)
+	fmt.Printf("%+v \n", <-dictionaryChannel)
+	fmt.Printf("%+v \n", <-wordsChannel)
+}
+
+func ReadWords(c chan<- []string) {
+	words := make([]string, 1000)
+	file, err := os.Open("find_words.txt")
+	if err != nil {
+		log.Fatal("Couldn't open find words file")
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for i := 0; scanner.Scan(); i++ {
+		words[i] = scanner.Text()
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal("Error while reading find words file")
+	}
+
+	c <- words
 }
 
 func ReadDictionary(c chan []Translation) {
