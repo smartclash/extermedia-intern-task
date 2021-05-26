@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"encoding/csv"
+	"fmt"
 	"github.com/jszwec/csvutil"
 	"io"
 	"log"
@@ -15,13 +15,13 @@ var wg sync.WaitGroup
 
 func main() {
 	dictionaryChannel := make(chan []Translation)
-	//wordsChannel := make(chan []string)
 	repeatedWordsChannel := make(chan []RepeatsCount)
 	translatedChannel := make(chan string)
 	repeatedCSVChannel := make(chan string)
+
+	wg.Add(6)
 	translatedText := ""
 
-	//go ReadWords(wordsChannel)
 	go ReadDictionary(dictionaryChannel)
 
 	file, err := os.Open("t8.shakespeare.txt")
@@ -54,6 +54,8 @@ func main() {
 }
 
 func TranslateShakespeare(dictionary []Translation, text string, c chan<- string) {
+	fmt.Println("Translating Shakespeare play")
+
 	var dictionaryPair []string
 	lowerText := strings.ToLower(text)
 
@@ -62,10 +64,15 @@ func TranslateShakespeare(dictionary []Translation, text string, c chan<- string
 	}
 
 	text = strings.NewReplacer(dictionaryPair...).Replace(lowerText)
+
+	fmt.Println("Translated Shakespeare play")
 	c <- text
+	wg.Done()
 }
 
 func CountWordRepeats(words []Translation, text string, c chan<- []RepeatsCount) {
+	fmt.Println("Counting word repeats")
+
 	var repeats []RepeatsCount
 	lowerText := strings.ToLower(text)
 
@@ -78,11 +85,13 @@ func CountWordRepeats(words []Translation, text string, c chan<- []RepeatsCount)
 		})
 	}
 
+	fmt.Println("Counted word repeats")
 	c <- repeats
+	wg.Done()
 }
 
 func WriteFile(text string, name string) {
-	wg.Add(1)
+	fmt.Println("Writing file", name)
 
 	file, err := os.Create(name)
 	if err != nil {
@@ -99,10 +108,13 @@ func WriteFile(text string, name string) {
 		log.Fatal("Couldn't write to", name, "file")
 	}
 
+	fmt.Println("Finished writing file", name)
 	wg.Done()
 }
 
 func WriteRepeatsCSV(repeats []RepeatsCount, c chan<- string) {
+	fmt.Println("Generating content for frequency.csv")
+
 	var csvData []Frequency
 	for _, repeat := range repeats {
 		csvData = append(csvData, Frequency{
@@ -117,30 +129,14 @@ func WriteRepeatsCSV(repeats []RepeatsCount, c chan<- string) {
 		log.Fatal("Couldn't generate CSV fields")
 	}
 
+	fmt.Println("Generated content for frequency.csv")
 	c <- string(buff)
-}
-
-func ReadWords(c chan<- []string) {
-	words := make([]string, 1000)
-	file, err := os.Open("find_words.txt")
-	if err != nil {
-		log.Fatal("Couldn't open find words file")
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for i := 0; scanner.Scan(); i++ {
-		words[i] = scanner.Text()
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal("Error while reading find words file")
-	}
-
-	c <- words
+	wg.Done()
 }
 
 func ReadDictionary(c chan []Translation) {
+	fmt.Println("Reading french_dictionary.csv")
+
 	dictionary := make([]Translation, 1000)
 	file, err := os.Open("french_dictionary.csv")
 	if err != nil {
@@ -172,5 +168,7 @@ func ReadDictionary(c chan []Translation) {
 		i++
 	}
 
+	fmt.Println("Finished reading french_dictionary.csv")
 	c <- dictionary
+	wg.Done()
 }
