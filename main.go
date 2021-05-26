@@ -13,12 +13,32 @@ import (
 func main() {
 	dictionaryChannel := make(chan []Translation)
 	wordsChannel := make(chan []string)
+	translatedText := ""
 
 	go ReadWords(wordsChannel)
 	go ReadDictionary(dictionaryChannel)
 
-	fmt.Printf("%+v \n", <-dictionaryChannel)
-	fmt.Printf("%+v \n", <-wordsChannel)
+	file, err := os.Open("t8.shakespeare.txt")
+	if err != nil {
+		log.Fatal("Couldn't open shakespeare file")
+	}
+	defer file.Close()
+
+	buff := make([]byte, 5000)
+	for {
+		totalRead, err := file.Read(buff)
+		if err != io.EOF && err != nil {
+			log.Fatal("Couldn't read shakespeare file into buffer")
+		} else if err == io.EOF {
+			break
+		}
+
+		translatedText += string(buff[:totalRead])
+	}
+
+	fmt.Println(translatedText)
+	<-wordsChannel
+	<-dictionaryChannel
 }
 
 func ReadWords(c chan<- []string) {
